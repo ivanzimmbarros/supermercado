@@ -50,6 +50,9 @@ def bootstrap() -> None:
     engine = init_db()
     with session_scope(engine) as session:
         ConfigService(session).ensure_seeded()
+        from supermercado.auth.allowlist import ensure_auth_settings
+
+        ensure_auth_settings(ConfigService(session))
         GeoContextService(session).ensure_seeded()
         seed_markets(session)
 

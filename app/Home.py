@@ -1,6 +1,5 @@
 """
 App Streamlit — Comparador familiar de supermercados (PT).
-
 Isolado de qualquer outro projeto Git/Streamlit do autor.
 """
 
@@ -13,57 +12,36 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+for p in (str(ROOT), str(SRC)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from supermercado.bootstrap import bootstrap
-from supermercado.persistence.db import create_db_engine, session_scope
+from app.components.runtime import gated_session, prepare_page
+from supermercado.persistence.db import create_db_engine
 from supermercado.services.config_service import ConfigService
 from supermercado.services.geo_service import GeoContextService
 
-st.set_page_config(
-    page_title="Supermercado Familiar",
-    layout="wide",
-)
+prepare_page("Supermercado Familiar")
+engine = create_db_engine()
 
+with gated_session(engine) as (session, auth):
+    geo = GeoContextService(session).ensure_seeded()
+    schedule = ConfigService(session).get_recurring_schedule()
+    windows = ConfigService(session).get_opportunity_windows_days()
+    markets = ConfigService(session).get_enabled_market_ids()
 
-@st.cache_resource
-def _engine():
-    return create_db_engine()
+    st.title("Supermercado Familiar")
+    st.caption("Listas, consultas e histórico de preços — Continente & Pingo Doce (MVP).")
+    st.caption(f"Sessão: {auth.name or auth.email}")
 
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Código postal ativo", geo.postal_code)
+    c2.metric("Agenda", f"{', '.join(schedule.weekdays)} · {schedule.time}")
+    c3.metric("Janelas (dias)", ", ".join(map(str, windows)))
 
-def _ensure_runtime():
-    bootstrap()
-    return _engine()
-
-
-def main() -> None:
-    engine = _ensure_runtime()
-    with session_scope(engine) as session:
-        geo = GeoContextService(session).ensure_seeded()
-        schedule = ConfigService(session).get_recurring_schedule()
-        windows = ConfigService(session).get_opportunity_windows_days()
-        markets = ConfigService(session).get_enabled_market_ids()
-
-        st.title("Supermercado Familiar")
-        st.caption(
-            "Listas, consultas e histórico de preços — Continente & Pingo Doce (MVP)."
-        )
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Código postal ativo", geo.postal_code)
-        c2.metric("Agenda", f"{', '.join(schedule.weekdays)} · {schedule.time}")
-        c3.metric("Janelas (dias)", ", ".join(map(str, windows)))
-
-        st.info(
-            "Use o menu lateral: **Configurações** para alterar CP, dias/hora do job e demais "
-            "parâmetros. Nenhum valor operacional está hardcoded no domínio."
-        )
-        st.write("Mercados activos:", ", ".join(markets) if markets else "—")
-        st.write("Estado do CP:", geo.status, f"({geo.locality or 'localidade n/d'})")
-
-
-if __name__ == "__main__":
-    main()
-else:
-    main()
+    st.info(
+        "Use o menu lateral para consultar preços, gerir listas e alterar configurações. "
+        "Referências operacionais (CP, agenda, mercados) não estão hardcoded."
+    )
+    st.write("Mercados activos:", ", ".join(markets) if markets else "—")
+    st.write("Estado do CP:", geo.status, f"({geo.locality or 'localidade n/d'})")

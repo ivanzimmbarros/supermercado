@@ -9,24 +9,27 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+for p in (str(ROOT), str(SRC)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from supermercado.bootstrap import bootstrap, seed_markets
+from app.components.runtime import gated_session, prepare_page
+from supermercado.auth.allowlist import (
+    SETTINGS_AUTH,
+    get_allowed_emails,
+    set_allowed_emails,
+)
+from supermercado.bootstrap import seed_markets
 from supermercado.defaults_seed import ALL_WEEKDAYS, WEEKDAY_LABELS_PT
 from supermercado.domain.schedule import RecurringScheduleConfig
-from supermercado.persistence.db import create_db_engine, session_scope
+from supermercado.persistence.db import create_db_engine
 from supermercado.services.config_service import ConfigService
 from supermercado.services.geo_service import GeoContextService
 
-st.set_page_config(page_title="Configurações", layout="wide")
-bootstrap()
+prepare_page("Configurações")
 engine = create_db_engine()
 
-st.title("Configurações")
-st.caption("Tudo o que é referência operacional (CP, agenda, janelas, mercados) altera-se aqui.")
-
-with session_scope(engine) as session:
+with gated_session(engine) as (session, auth):
     config = ConfigService(session)
     geo_svc = GeoContextService(session)
     active = geo_svc.ensure_seeded()
@@ -34,6 +37,12 @@ with session_scope(engine) as session:
     windows = config.get_opportunity_windows_days()
     markets = config.get_enabled_market_ids()
     all_geos = geo_svc.list_all()
+
+    st.title("Configurações")
+    st.caption(
+        "Tudo o que é referência operacional (CP, agenda, janelas, mercados, allowlist) altera-se aqui."
+    )
+    st.caption(f"Sessão: {auth.email}")
 
     st.subheader("Código postal")
     st.write(
@@ -46,15 +55,13 @@ with session_scope(engine) as session:
         submitted_cp = st.form_submit_button("Ativar código postal")
         if submitted_cp:
             try:
-                previous_id = active.id
                 previous_cp = active.postal_code
                 updated = geo_svc.activate(
                     new_cp, locality=locality or None, district=district or None
                 )
                 if updated.postal_code != previous_cp:
                     st.success(
-                        f"CP {previous_cp} congelado. "
-                        f"Ativo agora: {updated.postal_code}. "
+                        f"CP {previous_cp} congelado. Ativo agora: {updated.postal_code}. "
                         "Históricos anteriores preservados."
                     )
                 else:
@@ -66,7 +73,7 @@ with session_scope(engine) as session:
     st.markdown("#### Históricos por código postal")
     for g in all_geos:
         count = geo_svc.count_snapshots(g.id)
-        badge = "🟢 ativo" if g.status == "active" else "❄️ congelado"
+        badge = "ativo" if g.status == "active" else "congelado"
         st.write(f"- `{g.postal_code}` — {badge} — {count} snapshots — {g.locality or ''}")
 
     st.divider()
@@ -80,11 +87,10 @@ with session_scope(engine) as session:
             value=int(schedule.executions_per_week),
             step=1,
         )
-        default_days = schedule.weekdays
         chosen_days = st.multiselect(
             "Dias da semana",
             options=ALL_WEEKDAYS,
-            default=default_days,
+            default=schedule.weekdays,
             format_func=lambda d: WEEKDAY_LABELS_PT.get(d, d),
         )
         time_value = st.text_input("Hora padrão (HH:MM)", value=schedule.time)
@@ -137,4 +143,35 @@ with session_scope(engine) as session:
             config.set_enabled_market_ids(selected)
             seed_markets(session)
             st.success("Mercados atualizados.")
+            st.rerun()
+
+    st.divider()
+    st.subheader("Acesso (allowlist + política)")
+    allowed = get_allowed_emails(config)
+    policy = config.get_setting(SETTINGS_AUTH)
+    with st.form("form_auth"):
+        emails_raw = st.text_area(
+            "E-mails autorizados (um por linha)",
+            value="\n".join(allowed),
+        )
+        require_google = st.checkbox(
+            "Exigir login Google", value=bool(policy.get("require_google_login", True))
+        )
+        allow_bypass = st.checkbox(
+            "Permitir bypass local de desenvolvimento",
+            value=bool(policy.get("allow_dev_bypass", False)),
+            help="Só para ambiente local sem secrets OIDC. Não usar em produção.",
+        )
+        submitted_a = st.form_submit_button("Guardar acesso")
+        if submitted_a:
+            emails = [ln.strip() for ln in emails_raw.splitlines() if ln.strip()]
+            set_allowed_emails(config, emails, changed_by=None)
+            config.set_setting(
+                SETTINGS_AUTH,
+                {
+                    "require_google_login": require_google,
+                    "allow_dev_bypass": allow_bypass,
+                },
+            )
+            st.success("Política de acesso guardada.")
             st.rerun()

@@ -22,20 +22,22 @@ Seed do CP: `4815-413` (Vizela). Mudar o CP congela o histórico anterior; reati
 ## Arranque local
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 export PYTHONPATH=src
+export SUPERMERCADO_DEV_BYPASS=1   # só local, sem Google OIDC
 python -m supermercado.bootstrap
 streamlit run app/Home.py
 ```
+
+Para produção familiar: configure `.streamlit/secrets.toml` a partir de `.streamlit/secrets.toml.example` (Google OAuth + allowlist) e **desligue** o bypass em Configurações.
 
 Job (respeita agenda da BD):
 
 ```bash
 export PYTHONPATH=src
 python -m supermercado.jobs.recurring_collect
-# ou
 python -m supermercado.jobs.recurring_collect --force
 ```
 
@@ -46,10 +48,15 @@ export PYTHONPATH=src
 pytest -q
 ```
 
-## MVP (resumo)
+## Estado da implementação
 
-- 2 utilizadores, login Google + MFA da conta Google (próxima etapa)
-- Mercados MVP: Continente e Pingo Doce
-- Ranking: preço final €/unidade, só disponíveis
-- Histórico particionado por código postal
-- Scanner EAN (etapa seguinte)
+- [x] Configuração dinâmica (CP, agenda, janelas, mercados, allowlist)
+- [x] Histórico particionado por código postal
+- [x] Auth Google + allowlist (gate nas páginas)
+- [x] Normalizer €/unidade + matching idêntico/similar
+- [x] Providers Continente e Pingo Doce + consulta avulsa
+- [x] Histórico / melhores janelas
+- [x] Recorrentes + job que lê a agenda
+- [ ] Listas de compras completas
+- [ ] Scanner EAN (câmara)
+- [ ] Deploy Streamlit Cloud isolado
