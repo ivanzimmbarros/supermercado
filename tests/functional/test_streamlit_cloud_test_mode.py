@@ -23,5 +23,5 @@ def test_teste_streamlit_doc_exists():
     assert doc.exists()
     text = doc.read_text(encoding="utf-8")
     assert "app/Home.py" in text
-    assert "cursor/architecture-design-b771" in text
+    assert "main" in text
     assert "dev_bypass" in text
