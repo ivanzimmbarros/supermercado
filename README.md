@@ -2,6 +2,15 @@
 
 Sistema familiar de listas de compras e comparação de preços em supermercados de Portugal (Python + Streamlit).
 
+## Comece aqui (sem ser técnico)
+
+Leia **[COMECE_AQUI.md](COMECE_AQUI.md)** e execute:
+
+- **Windows:** duplo clique em `iniciar_app.bat`
+- **Mac/Linux:** `./iniciar_app.sh`
+
+A app abre em http://localhost:8501
+
 ## Isolamento
 
 Este repositório e o app Streamlit são **independentes** de quaisquer outros projetos Git/Streamlit. Não partilham secrets, base de dados, jobs nem configuração de deploy.
