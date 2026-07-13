@@ -13,8 +13,10 @@ for p in (str(ROOT), str(SRC)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+from app.components.ean_scanner import render_ean_scanner
 from app.components.runtime import gated_session, prepare_page
 from supermercado.persistence.db import create_db_engine
+from supermercado.scanning.ean import validate_ean
 from supermercado.services.geo_service import GeoContextService
 from supermercado.services.search_service import SearchService
 
@@ -29,22 +31,30 @@ with gated_session(engine) as (session, auth):
         f"Sessão: {auth.email}"
     )
 
+    scanned_ean = render_ean_scanner("consulta")
+
     with st.form("search_form"):
-        col_a, col_b = st.columns([3, 1])
-        with col_a:
-            query = st.text_input("Produto", placeholder="ex.: leite uht meio gordo")
-        with col_b:
-            ean = st.text_input("EAN (opcional)", placeholder="código de barras")
+        query = st.text_input("Produto (texto)", placeholder="ex.: leite uht meio gordo")
+        ean_override = st.text_input(
+            "EAN (confirmação / override)",
+            value=scanned_ean or "",
+            placeholder="preenchido pelo scanner se disponível",
+        )
         submitted = st.form_submit_button("Comparar preços", type="primary")
 
     if submitted:
-        if not query.strip() and not ean.strip():
-            st.error("Indique um produto ou EAN.")
+        ean = (ean_override or scanned_ean or "").strip()
+        if ean:
+            check = validate_ean(ean)
+            if not check.ok:
+                st.warning(check.message)
+        if not query.strip() and not ean:
+            st.error("Indique um produto ou EAN (scanner/manual).")
         else:
             with st.spinner("A consultar mercados activos..."):
                 result = SearchService(session).search(
                     text=query.strip() or None,
-                    ean=ean.strip() or None,
+                    ean=ean or None,
                 )
             if result.errors:
                 for market, err in result.errors.items():

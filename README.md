@@ -64,5 +64,5 @@ Qualquer falha ⇒ corrigir e voltar a correr até verde (ver [`docs/TESTING.md`
 - [x] Recorrentes + job que lê a agenda
 - [x] Estrutura obrigatória de testes unit/functional/e2e/utilizadores simulados
 - [x] Listas de compras com comparação €/unidade por item
-- [ ] Scanner EAN (câmara)
+- [x] Scanner EAN (manual / câmara / upload)
 - [ ] Deploy Streamlit Cloud isolado

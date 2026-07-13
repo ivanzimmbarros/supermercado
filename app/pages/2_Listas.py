@@ -13,6 +13,7 @@ for p in (str(ROOT), str(SRC)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+from app.components.ean_scanner import render_ean_scanner
 from app.components.runtime import gated_session, prepare_page
 from supermercado.persistence.db import create_db_engine
 from supermercado.services.geo_service import GeoContextService
@@ -62,13 +63,14 @@ with gated_session(engine) as (session, auth):
         comparar = st.button("Comparar preços desta lista", type="primary")
 
     st.subheader("Adicionar produto")
+    scanned_ean = render_ean_scanner("lista_item")
     with st.form("add_item"):
         c1, c2 = st.columns(2)
         with c1:
             pname = st.text_input("Nome")
             brand = st.text_input("Marca")
             category = st.text_input("Categoria")
-            ean = st.text_input("EAN")
+            ean = st.text_input("EAN", value=scanned_ean or "")
         with c2:
             qty_val = st.number_input("Quantidade da embalagem", min_value=0.0, value=1.0)
             qty_unit = st.selectbox("Unidade", ["l", "ml", "kg", "g", "un"])
@@ -86,7 +88,7 @@ with gated_session(engine) as (session, auth):
                     quantity_value=float(qty_val) if qty_val else None,
                     quantity_unit=qty_unit,
                     pack_count=int(pack),
-                    ean=ean or None,
+                    ean=(ean or scanned_ean or None),
                     quantity_desired=float(desired),
                     notes=notes or None,
                 )
