@@ -1,2 +1,1 @@
-# Dependências de sistema para Streamlit Community Cloud
 libzbar0
