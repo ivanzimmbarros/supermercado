@@ -1,8 +1,9 @@
 # Escopo MVP — Sistema Familiar de Comparação de Preços
 
-Estado: **congelado** (decisões alinhadas em 2026-07-13).  
+Estado: **congelado + refinamentos de configuração** (2026-07-13).  
 Idioma da UI: **português**.  
-Repositório: `ivanzimmbarros/supermercado` (isolado dos outros projetos Git/Streamlit).
+Repositório: `ivanzimmbarros/supermercado` (isolado dos outros projetos Git/Streamlit).  
+Configuração: ver [`CONFIGURATION.md`](CONFIGURATION.md) — **zero hardcode** de regras operacionais.
 
 ## Objetivo
 
@@ -23,10 +24,13 @@ Aplicação familiar (2 utilizadores) em Python + Streamlit para:
 | MFA | 2FA da conta Google |
 | Autorização | Allowlist de e-mails (só os 2 Gmail autorizados) |
 
-## Âncora geográfica
+## Âncora geográfica (configurável)
 
-- Código postal de referência: **4815-413** (Vizela, Braga)
-- Usado para contextualizar disponibilidade/stock e seleção de loja preferida por mercado (quando o site exigir)
+- Seed inicial: **4815-413** (Vizela, Braga) — apenas no first boot
+- Alterável na UI de configuração (`GeoContextService`)
+- Cada código postal tem série histórica **própria**; mudança de CP congela a série anterior e cria/reativa outra
+- Voltar a um CP antigo **retoma** o histórico previo (append) — nunca apaga
+- Consultas de oportunidade/histório são sempre filtradas pelo `geo_context` selecionado
 
 ## Mercados
 
@@ -66,28 +70,32 @@ Aplicação familiar (2 utilizadores) em Python + Streamlit para:
 - Serve de referência para busca exacta e similares
 - UX mobile-first pragmática no Streamlit
 
-### Recorrentes
+### Recorrentes e agenda (configurável)
 
-- Atualização **2× por semana** (ex.: terça e sexta, configurável)
-- Alimenta histórico e destaques de oportunidade
+- Seed: **terça e sexta, 07:00, Europe/Lisbon, 2 execuções/semana**
+- UI permite definir: quantidade de execuções, dias da semana e hora padrão
+- Invariante: `len(dias) == quantidade_execucoes`
+- Runner consulta a config em runtime (sem dias/hora hardcoded no código de negócio)
 
 ### Histórico / oportunidades
 
 Respostas do tipo:
 
-- Melhor preço do produto X nos últimos **15 / 30 / 60** dias
+- Melhor preço do produto X nos últimos **15 / 30 / 60** dias (janelas também configuráveis)
 - Sempre com base no **preço final por unidade**
+- Sempre no âmbito do **código postal** ativo ou selecionado para consulta
 
 ## Módulos funcionais MVP
 
 1. Autenticação Google + allowlist
-2. Cadastro rico de produtos (+ scanner EAN)
-3. Consulta avulsa
-4. Listas de compras + comparação
-5. Providers Continente e Pingo Doce
-6. Histórico e janelas 15/30/60
-7. Recorrentes + job 2×/semana
-8. Deploy Streamlit isolado
+2. **Configurações** (CP, agenda do job, janelas, mercados) — sem hardcode
+3. Cadastro rico de produtos (+ scanner EAN)
+4. Consulta avulsa
+5. Listas de compras + comparação
+6. Providers Continente e Pingo Doce
+7. Histórico particionado por CP + janelas configuráveis
+8. Recorrentes + runner que lê a agenda da BD
+9. Deploy Streamlit isolado
 
 ## Explicitamente fora do MVP
 

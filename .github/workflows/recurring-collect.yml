@@ -1,0 +1,35 @@
+name: recurring-collect
+
+# O cron aqui é apenas o "tick" do runner.
+# Dias/hora reais vêm da base via ScheduleService (ConfigService) — sem hardcode de negócio.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Forçar execução (ignora janela/dias)"
+        required: false
+        default: "false"
+        type: string
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Run recurring job
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          export PYTHONPATH=src
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            python -m supermercado.jobs.recurring_collect --force
+          else
+            python -m supermercado.jobs.recurring_collect
+          fi

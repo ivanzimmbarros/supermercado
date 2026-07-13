@@ -8,12 +8,13 @@ Escopo funcional: ver [`docs/MVP_SCOPE.md`](MVP_SCOPE.md).
 ## 1. Princípios
 
 1. **Isolamento total**: repo, app Streamlit, secrets, base de dados e jobs próprios — sem partilha com outros projetos.
-2. **Adapters por mercado**: cada supermercado é um provider plugável; falha de um não derruba os outros.
-3. **Comparação justa**: ranking por **preço final €/unidade**, só em itens disponíveis.
-4. **Histórico imutável (append-only)**: snapshots diários/por captura nunca sobrescrevem o passado.
-5. **Confirmação humana no matching**: o casal valida matches ambíguos; o sistema memoriza.
-6. **MVP primeiro**: Continente + Pingo Doce; Lidl/Intermarché/Aldi entram como stubs e implementação v2.
-7. **Simplicidade operacional**: 2 utilizadores, free/low-cost, deploy Cloud Streamlit + storage externo.
+2. **Zero hardcode operacional**: postal, agenda do job, mercados ativos, janelas 15/30/60, etc. só via `ConfigService` (defaults apenas como seed). Detalhe em [`CONFIGURATION.md`](CONFIGURATION.md).
+3. **Adapters por mercado**: cada supermercado é um provider plugável; falha de um não derruba os outros.
+4. **Comparação justa**: ranking por **preço final €/unidade**, só em itens disponíveis.
+5. **Histórico imutável e particionado por código postal**: snapshots append-only; cada `geo_context` tem série própria; CP anterior fica congelado; reativar CP retoma a série.
+6. **Confirmação humana no matching**: o casal valida matches ambíguos; o sistema memoriza.
+7. **MVP primeiro**: Continente + Pingo Doce; Lidl/Intermarché/Aldi entram como stubs e implementação v2.
+8. **Simplicidade operacional**: 2 utilizadores, free/low-cost, deploy Cloud Streamlit + storage externo.
 
 ---
 
@@ -161,14 +162,48 @@ erDiagram
 | active | bool | |
 | created_at | timestamptz | |
 
-#### `geo_context`
+#### `geo_contexts`
 | Campo | Tipo | Notas |
 |---|---|---|
 | id | uuid | PK |
-| postal_code | text | default `4815-413` |
-| locality | text | Vizela |
-| district | text | Braga |
+| postal_code | text | UNIQUE |
+| locality | text | ex. Vizela |
+| district | text | ex. Braga |
+| status | text | `active` \| `frozen` |
+| activated_at | timestamptz | |
+| deactivated_at | timestamptz | nullable |
+| created_at | timestamptz | |
 | notes | text | |
+
+Regra: existe **no máximo um** `active` de cada vez. CPs anteriores ficam `frozen` e **nunca** são apagados.
+
+#### `app_settings`
+| Campo | Tipo | Notas |
+|---|---|---|
+| key | text | PK (ex. `recurring_schedule`) |
+| value_json | jsonb | payload tipado por chave |
+| updated_at | timestamptz | |
+| updated_by | uuid | nullable FK users |
+
+#### `settings_audit`
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | bigserial | |
+| key | text | |
+| old_value | jsonb | |
+| new_value | jsonb | |
+| changed_by | uuid | |
+| changed_at | timestamptz | |
+
+#### `market_preferences`
+| Campo | Tipo | Notas |
+|---|---|---|
+| market_id | text | FK |
+| geo_context_id | uuid | FK — preferências de loja **por CP** |
+| preferred_store_id | text | nullable |
+| preferred_store_name | text | nullable |
+| extra_json | jsonb | cookies/context necessários ao provider |
+| UNIQUE(market_id, geo_context_id) | | |
 
 #### `markets`
 | Campo | Tipo | Notas |
@@ -176,18 +211,9 @@ erDiagram
 | id | text | `continente`, `pingo_doce`, ... |
 | name | text | |
 | country | text | `PT` |
-| enabled | bool | MVP: só continente/pingo_doce `true` |
+| enabled | bool | valor inicial via seed; runtime via ConfigService/markets |
 | provider_key | text | classe adapter |
 | priority | int | ordem de consulta |
-
-#### `market_preferences`
-| Campo | Tipo | Notas |
-|---|---|---|
-| market_id | text | FK |
-| preferred_store_id | text | nullable |
-| preferred_store_name | text | nullable |
-| postal_code | text | `4815-413` |
-| extra_json | jsonb | cookies/context necessários ao provider |
 
 #### `products` (produto canónico familiar)
 | Campo | Tipo | Notas |
@@ -236,10 +262,11 @@ erDiagram
 | created_at | timestamptz | |
 | UNIQUE(product_id, market_product_id) | | |
 
-#### `price_snapshots` (append-only)
+#### `price_snapshots` (append-only, particionado por CP)
 | Campo | Tipo | Notas |
 |---|---|---|
 | id | bigserial | PK |
+| geo_context_id | uuid | FK **obrigatório** — série histórica do CP |
 | market_product_id | uuid | FK |
 | product_id | uuid | nullable (se já matched) |
 | captured_at | timestamptz | |
@@ -254,7 +281,7 @@ erDiagram
 | available | bool | |
 | availability_label | text | nullable |
 | source | text | `live_query` / `recurring_job` / `manual` |
-| UNIQUE parcial recomendado | | 1 snapshot “oficial” por produto×mercado×dia (opcional) |
+| INDEX (geo_context_id, product_id, captured_at) | | |
 
 #### `shopping_lists` / `list_items`
 - Lista: nome, owner, status (`ativa`, `arquivada`), timestamps
@@ -294,12 +321,15 @@ erDiagram
 
 | Serviço | Função |
 |---|---|
+| `ConfigService` | Settings versionados (agenda, janelas, mercados) |
+| `GeoContextService` | Activar/congelar CP; continuidade histórica |
+| `ScheduleService` | Validar N/dias/hora; `should_run_now()` |
 | `ProductService` | CRUD canónico + atributos ricos |
 | `SearchService` | consulta avulsa multi-provider |
 | `ListService` | listas e otimização simples item-a-item |
 | `RecurringService` | registo + disparo de coleta |
-| `HistoryService` | janelas 15/30/60 e gráficos |
-| `OpportunityService` | melhor €/unidade atual e histórico |
+| `HistoryService` | janelas configuráveis e gráficos por geo |
+| `OpportunityService` | melhor €/unidade atual e histórico **por geo_context_id** |
 
 ### 5.4 Normalization
 
@@ -398,31 +428,57 @@ sequenceDiagram
 4. Vista agregada: total estimado + indicação do mercado vencedor por linha
 5. Utilizador pode substituir similar manualmente
 
-### 6.3 Recorrentes (2×/semana)
+### 6.3 Recorrentes (agenda configurável)
 
 ```mermaid
 flowchart LR
-  Cron[Scheduler 2x/semana] --> Job[recurring_collect]
-  Job --> Load[Carregar recurring enabled]
+  Tick[Runner periódico lê ConfigService] --> Gate{Hoje e hora casam?}
+  Gate -->|não| Skip[No-op]
+  Gate -->|sim| Lock[Lock / last_run_at]
+  Lock --> Job[recurring_collect]
+  Job --> Geo[geo_context ativo]
+  Geo --> Load[Carregar recurring enabled]
   Load --> Query[SearchService por produto]
-  Query --> Save[Snapshots + estado]
-  Save --> Opp[Recalcular melhores 15/30/60]
+  Query --> Save[Snapshots no geo_context ativo]
+  Save --> Opp[Recalcular melhores janelas]
 ```
 
-Execução prevista:
-
-- Preferência: job externo leve (GitHub Actions cron **neste repo** ou cron num free tier) que chama um script Python
-- Alternativa MVP ainda mais simples: botão “Atualizar agora” + lembrete; cron assim que secrets/DB estáveis
+- Seed: terça e sexta, 07:00, `Europe/Lisbon`, 2 execuções
+- Alterável em Configurações: N execuções, dias, hora, timezone, enabled
+- Runner **nunca** assume dias/hora no código — pergunta ao `ScheduleService.should_run_now()`
+- Snapshots gravam-se só no `geo_context` **active**
 - **Não** usar schedulers dos outros projetos
 
-### 6.4 Histórico / oportunidades
+### 6.4 Mudança de código postal
 
-- Queries sobre `price_snapshots` filtrando `available` e/ou incluindo indisponíveis só em gráficos
+```mermaid
+sequenceDiagram
+  actor User
+  participant UI
+  participant Geo as GeoContextService
+  participant DB
+
+  User->>UI: novo CP
+  UI->>Geo: activate(postal_code)
+  Geo->>DB: active atual -> frozen
+  alt CP já existia
+    Geo->>DB: reativar geo_context (status=active)
+  else CP novo
+    Geo->>DB: criar geo_context + série vazia
+  end
+  Note over DB: snapshots antigos intactos
+  Geo-->>UI: contexto ativo
+```
+
+### 6.5 Histórico / oportunidades
+
+- Queries sobre `price_snapshots` **sempre** com `geo_context_id`
 - Métricas:
-  - min(`unit_price_final`) em 15/30/60 dias
+  - min(`unit_price_final`) nas janelas configuráveis (seed 15/30/60)
   - mercado do mínimo
   - se o mínimo foi promo
   - preço atual vs mínimo da janela (% acima/abaixo)
+- UI pode consultar um CP `frozen` sem o reativar (modo leitura)
 
 ---
 
@@ -539,9 +595,11 @@ Ordem estrita:
 
 1. Nome público do app Streamlit
 2. Provider Postgres: Supabase vs Neon
-3. Dias exactos do job (sugestão: terça e sexta 07:00 Europe/Lisbon)
-4. Biblioteca concreta de leitura de EAN conforme limites do Cloud
-5. Lojas preferidas exactas em Vizela/arredores (seleção na primeira configuração)
+3. Biblioteca concreta de leitura de EAN conforme limites do Cloud
+4. Lojas preferidas exactas em Vizela/arredores (seleção na primeira configuração)
+
+**Fechado:** agenda seed terça/sexta 07:00 Lisbon; config dinâmica; histórico particionado por CP.
+
 
 ---
 
