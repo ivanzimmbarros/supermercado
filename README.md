@@ -12,6 +12,7 @@ Este repositório e o app Streamlit são **independentes** de quaisquer outros p
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Configuração dinâmica e histórico por CP](docs/CONFIGURATION.md)
 - [Política obrigatória de testes](docs/TESTING.md)
+- [Deploy isolado](docs/DEPLOY.md)
 - [Regras do agente](AGENTS.md)
 
 ## Princípio: zero hardcode operacional
@@ -65,4 +66,5 @@ Qualquer falha ⇒ corrigir e voltar a correr até verde (ver [`docs/TESTING.md`
 - [x] Estrutura obrigatória de testes unit/functional/e2e/utilizadores simulados
 - [x] Listas de compras com comparação €/unidade por item
 - [x] Scanner EAN (manual / câmara / upload)
-- [ ] Deploy Streamlit Cloud isolado
+- [x] Documentação e checklist de deploy Streamlit isolado
+- [ ] Publicação efectiva no Streamlit Cloud (requer secrets Google + Postgres do owner)
