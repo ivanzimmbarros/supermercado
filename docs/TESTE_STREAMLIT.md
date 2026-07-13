@@ -12,7 +12,7 @@ Use isto em vez do `iniciar_app.bat` enquanto o Defender bloquear o PC.
 | Campo | Valor |
 |---|---|
 | Repository | `ivanzimmbarros/supermercado` |
-| Branch | `cursor/architecture-design-b771` |
+| Branch | `main` |
 | Main file path | `app/Home.py` |
 | App URL / nome | algo novo, ex. `supermercado-familiar` |
 
@@ -49,7 +49,7 @@ allowed_emails = ["ivanzimmbarros@gmail.com"]
 
 - Este modo `dev_bypass = true` é **só para teste**. Depois ligamos login Google.
 - Sem Postgres externo, os dados podem apagar-se quando o app hiberna — normal no teste.
-- Se a branch no ecrã for `main`, mude para `cursor/architecture-design-b771` (a `main` ainda está quase vazia).
+- Se a branch no ecrã for outra, escolha **`main`**.
 
 ## Se der erro
 
