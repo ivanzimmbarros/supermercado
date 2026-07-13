@@ -562,13 +562,29 @@ Conformidade: uso pessoal/familiar de dados publicamente visíveis nos sites; vo
 
 ---
 
-## 11. Estratégia de testes
+## 11. Estratégia de testes (obrigatória)
 
-1. **Unitários**: normalizer (€/unidade), matching score, opportunity windows
-2. **Contrato providers**: fixtures HTML/JSON realistas (Capturas Continente/Pingo Doce)
-3. **Integração DB**: snapshots append-only e queries 15/30/60
-4. **Smoke UI**: login allowlist (mock), consulta, lista
-5. **Manual familiar**: 1 lista real com CP 4815-413
+Política completa: [`docs/TESTING.md`](TESTING.md).
+
+**Instrução permanente:** cada etapa/épico só conclui com suite completa verde
+(unit + functional + e2e + navegação simulada). Falhas ⇒ reconstruir até passar.
+
+Camadas:
+
+1. **Unitários** (`tests/unit/`): normalizer, matching, validação de agenda
+2. **Funcionais** (`tests/functional/`): CP freeze/resume, search+snapshots, schedule
+3. **E2E** (`tests/e2e/`): páginas Streamlit via `AppTest` / fluxos ponta-a-ponta
+4. **Utilizadores simulados** (`tests/simulated_users/`): roteiros familiares de navegação
+5. **Contrato providers**: fixtures HTML Continente/Pingo Doce
+6. **Revisão contínua**: actualizar testes sempre que o comportamento mudar
+
+Gate ao fim de cada etapa:
+
+```bash
+export PYTHONPATH=src SUPERMERCADO_DEV_BYPASS=1
+python3 -m pytest -q
+# ou: python3 -m tests.run_all
+```
 
 ---
 

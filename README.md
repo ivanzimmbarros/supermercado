@@ -11,6 +11,8 @@ Este repositório e o app Streamlit são **independentes** de quaisquer outros p
 - [Escopo MVP](docs/MVP_SCOPE.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Configuração dinâmica e histórico por CP](docs/CONFIGURATION.md)
+- [Política obrigatória de testes](docs/TESTING.md)
+- [Regras do agente](AGENTS.md)
 
 ## Princípio: zero hardcode operacional
 
@@ -41,12 +43,15 @@ python -m supermercado.jobs.recurring_collect
 python -m supermercado.jobs.recurring_collect --force
 ```
 
-Testes:
+Testes (gate obrigatório ao fim de cada etapa):
 
 ```bash
-export PYTHONPATH=src
-pytest -q
+export PYTHONPATH=src SUPERMERCADO_DEV_BYPASS=1
+python3 -m tests.run_all
 ```
+
+Camadas: `tests/unit`, `tests/functional`, `tests/e2e`, `tests/simulated_users`.  
+Qualquer falha ⇒ corrigir e voltar a correr até verde (ver [`docs/TESTING.md`](TESTING.md)).
 
 ## Estado da implementação
 
@@ -57,6 +62,7 @@ pytest -q
 - [x] Providers Continente e Pingo Doce + consulta avulsa
 - [x] Histórico / melhores janelas
 - [x] Recorrentes + job que lê a agenda
+- [x] Estrutura obrigatória de testes unit/functional/e2e/utilizadores simulados
 - [ ] Listas de compras completas
 - [ ] Scanner EAN (câmara)
 - [ ] Deploy Streamlit Cloud isolado
