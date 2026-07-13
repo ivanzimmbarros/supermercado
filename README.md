@@ -11,6 +11,10 @@ Leia **[COMECE_AQUI.md](COMECE_AQUI.md)** e execute:
 
 A app abre em http://localhost:8501
 
+**Pasta oficial no Windows do owner:**  
+`C:\Users\ivanz\OneDrive\Documentos\Projetos - AI\3. Supermercado`  
+(ficheiro: `iniciar_app.bat` dentro desta pasta)
+
 ## Isolamento
 
 Este repositório e o app Streamlit são **independentes** de quaisquer outros projetos Git/Streamlit. Não partilham secrets, base de dados, jobs nem configuração de deploy.

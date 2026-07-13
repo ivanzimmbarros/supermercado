@@ -1,5 +1,16 @@
 # Regras obrigatórias do projeto supermercado
 
+## Pasta local do utilizador (Windows)
+
+Referência oficial no PC do owner (não acessível directamente pela cloud):
+
+```text
+C:\Users\ivanz\OneDrive\Documentos\Projetos - AI\3. Supermercado
+```
+
+O agente trabalha no repositório Git (`/workspace` ↔ GitHub).  
+Qualquer instrução de “local” deve apontar para essa pasta Windows e lembrar que a sincronização é via Git/ZIP da branch correcta — nunca assumir escrita directa no OneDrive.
+
 ## Gate de testes (Definition of Done)
 
 Para **toda e qualquer etapa/épico** daqui em diante:
