@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from supermercado.auth.allowlist import render_login_gate
+from supermercado.auth.allowlist import SETTINGS_AUTH, ensure_auth_settings, render_login_gate
 from supermercado.bootstrap import bootstrap
 from supermercado.persistence.db import create_db_engine, session_scope
 from supermercado.services.config_service import ConfigService
@@ -25,6 +26,19 @@ def prepare_page(title: str):
     return engine
 
 
+def _dev_bypass_requested() -> bool:
+    if os.environ.get("SUPERMERCADO_DEV_BYPASS") == "1":
+        return True
+    try:
+        app_secrets = st.secrets.get("app", {})
+        flag = app_secrets.get("dev_bypass", False)
+        if flag is True or str(flag).lower() in {"1", "true", "yes"}:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def gated_session(engine):
     """Context manager-like pattern: devolve (session, auth) já passando o gate."""
 
@@ -33,17 +47,12 @@ def gated_session(engine):
             self._cm = session_scope(engine)
             self.session = self._cm.__enter__()
             config = ConfigService(self.session)
-            # Em local sem secrets Google: permitir bypass só se allowlist vazia + flag
-            # A flag default é False; activamos automaticamente apenas se não há OIDC
-            # e existe env SUPERMERCADO_DEV_BYPASS=1
-            import os
-
-            from supermercado.auth.allowlist import SETTINGS_AUTH, ensure_auth_settings
-
             ensure_auth_settings(config)
-            if os.environ.get("SUPERMERCADO_DEV_BYPASS") == "1":
+            if _dev_bypass_requested():
                 policy = config.get_setting(SETTINGS_AUTH)
                 policy["allow_dev_bypass"] = True
+                # Em modo teste Cloud sem Google, não exigir OIDC
+                policy["require_google_login"] = False
                 config.set_setting(SETTINGS_AUTH, policy)
             self.auth = render_login_gate(config)
             return self.session, self.auth

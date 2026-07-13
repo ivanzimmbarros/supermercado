@@ -4,16 +4,12 @@ Sistema familiar de listas de compras e comparação de preços em supermercados
 
 ## Comece aqui (sem ser técnico)
 
-Leia **[COMECE_AQUI.md](COMECE_AQUI.md)** e execute:
+**Teste recomendado agora (sem Defender):** siga  
+**[docs/TESTE_STREAMLIT.md](docs/TESTE_STREAMLIT.md)** — publicar um app Streamlit **novo** a partir da branch `cursor/architecture-design-b771`.
 
-- **Windows:** duplo clique em `iniciar_app.bat`
-- **Mac/Linux:** `./iniciar_app.sh`
-
-A app abre em http://localhost:8501
-
-**Pasta oficial no Windows do owner:**  
-`C:\Users\ivanz\OneDrive\Documentos\Projetos - AI\3. Supermercado`  
-(ficheiro: `iniciar_app.bat` dentro desta pasta)
+Pasta Windows (quando o Defender deixar):  
+`C:\Users\ivanz\OneDrive\Documentos\Projetos - AI\3. Supermercado\iniciar_app.bat`  
+Guia local: **[COMECE_AQUI.md](COMECE_AQUI.md)**
 
 ## Isolamento
 
