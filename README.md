@@ -63,6 +63,6 @@ Qualquer falha ⇒ corrigir e voltar a correr até verde (ver [`docs/TESTING.md`
 - [x] Histórico / melhores janelas
 - [x] Recorrentes + job que lê a agenda
 - [x] Estrutura obrigatória de testes unit/functional/e2e/utilizadores simulados
-- [ ] Listas de compras completas
+- [x] Listas de compras com comparação €/unidade por item
 - [ ] Scanner EAN (câmara)
 - [ ] Deploy Streamlit Cloud isolado
